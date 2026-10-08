@@ -2,10 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Air Hockey Pro - Fullscreen & Keyboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Air Hockey - Mobile & Desktop</title>
   <style>
     * {
       box-sizing: border-box;
+      touch-action: none; /* Prevents phone from scrolling or zooming */
     }
     body {
       margin: 0;
@@ -15,60 +17,58 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      min-height: 100vh;
+      height: 100vh;
+      width: 100vw;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       color: #fff;
       user-select: none;
+      -webkit-user-select: none;
       overflow: hidden;
     }
     #ui-bar {
       display: flex;
       align-items: center;
-      gap: 16px;
-      margin-bottom: 10px;
+      gap: 12px;
+      margin-bottom: 8px;
     }
     h1 {
       margin: 0;
-      font-size: 24px;
+      font-size: 20px;
       letter-spacing: 1px;
     }
     .hint {
       color: #94a3b8;
-      font-size: 13px;
+      font-size: 12px;
     }
     button {
       background: #0284c7;
       color: #fff;
       border: none;
-      padding: 6px 14px;
+      padding: 5px 12px;
       border-radius: 6px;
       font-weight: 600;
       cursor: pointer;
-      font-size: 13px;
-      transition: background 0.2s;
+      font-size: 12px;
     }
     button:hover {
       background: #0369a1;
     }
     #game-container {
-      position: relative;
+      width: 95vw;
+      max-width: 920px;
+      aspect-ratio: 920 / 540;
       display: flex;
       justify-content: center;
       align-items: center;
     }
     canvas {
-      border: 4px solid #38bdf8;
+      width: 100%;
+      height: 100%;
+      border: 3px solid #38bdf8;
       background: radial-gradient(circle at center, #1e293b 0%, #0a0f1d 100%);
-      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.8);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
       border-radius: 12px;
       cursor: crosshair;
-    }
-    /* Fullscreen mode styling */
-    :fullscreen {
-      background-color: #070b14;
-      display: flex;
-      justify-content: center;
-      align-items: center;
     }
   </style>
 </head>
@@ -76,7 +76,7 @@
 
   <div id="ui-bar">
     <h1>Air Hockey</h1>
-    <span class="hint">Controls: <b>WASD / Arrow Keys</b> or <b>Mouse</b> | Press <b>F</b> for Fullscreen</span>
+    <span class="hint">Drag finger or move mouse</span>
     <button id="fullscreenBtn">⛶ Fullscreen</button>
   </div>
 
@@ -92,23 +92,23 @@
     let playerScore = 0;
     let aiScore = 0;
 
-    // Dimensions & Goal Structure
+    // Arena dimensions
     const goalHeight = 190;
     const goalTop = (canvas.height - goalHeight) / 2;
     const goalBottom = goalTop + goalHeight;
     const goalBoxWidth = 32;
 
-    // Striker (Mallet) settings
-    const strikerRadius = 26;
+    // Striker (Mallet)
+    const strikerRadius = 28;
     let playerX = 140;
     let playerY = canvas.height / 2;
-    const keyboardSpeed = 7.5; // How fast paddle moves with keys
+    const keyboardSpeed = 7.5;
 
     let aiX = canvas.width - 140;
     let aiY = canvas.height / 2;
 
-    // Puck settings
-    const puckRadius = 13;
+    // Puck
+    const puckRadius = 14;
     let puckX = canvas.width / 2;
     let puckY = canvas.height / 2;
     let puckSpeedX = 6;
@@ -116,50 +116,19 @@
     const baseSpeed = 6;
     const speedBoost = 1.05;
 
-    // Keyboard state tracker
-    const keys = {
-      ArrowUp: false,
-      ArrowDown: false,
-      ArrowLeft: false,
-      ArrowRight: false,
-      w: false,
-      s: false,
-      a: false,
-      d: false
-    };
-
-    window.addEventListener("keydown", (e) => {
-      const key = e.key.toLowerCase();
-      if (keys.hasOwnProperty(e.key) || keys.hasOwnProperty(key)) {
-        keys[e.key] = true;
-        keys[key] = true;
-      }
-      if (key === "f") {
-        toggleFullscreen();
-      }
-    });
-
-    window.addEventListener("keyup", (e) => {
-      const key = e.key.toLowerCase();
-      if (keys.hasOwnProperty(e.key) || keys.hasOwnProperty(key)) {
-        keys[e.key] = false;
-        keys[key] = false;
-      }
-    });
-
-    // Mouse movement
-    canvas.addEventListener("mousemove", (e) => {
+    // Touch & Mouse Handler with proportional scaling
+    function handlePointer(clientX, clientY) {
       const rect = canvas.getBoundingClientRect();
       const scaleX = canvas.width / rect.width;
       const scaleY = canvas.height / rect.height;
 
-      const targetX = (e.clientX - rect.left) * scaleX;
-      const targetY = (e.clientY - rect.top) * scaleY;
+      const targetX = (clientX - rect.left) * scaleX;
+      const targetY = (clientY - rect.top) * scaleY;
 
       clampAndSetPlayerPosition(targetX, targetY);
-    });
+    }
 
-    // Keep player restricted to left half
+    // Keep striker in player half
     function clampAndSetPlayerPosition(x, y) {
       const minX = goalBoxWidth + strikerRadius;
       const maxX = (canvas.width / 2) - strikerRadius - 4;
@@ -170,12 +139,37 @@
       playerY = Math.max(minY, Math.min(maxY, y));
     }
 
-    // Fullscreen toggle logic
+    // Mouse Listeners
+    canvas.addEventListener("mousemove", (e) => {
+      handlePointer(e.clientX, e.clientY);
+    });
+
+    // Touch Listeners for Phones & Tablets
+    function onTouch(e) {
+      e.preventDefault();
+      if (e.touches.length > 0) {
+        handlePointer(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    }
+
+    canvas.addEventListener("touchstart", onTouch, { passive: false });
+    canvas.addEventListener("touchmove", onTouch, { passive: false });
+
+    // Keyboard support (W, A, S, D & Arrows)
+    const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, w: false, s: false, a: false, d: false };
+    window.addEventListener("keydown", (e) => {
+      const k = e.key.toLowerCase();
+      if (keys.hasOwnProperty(e.key) || keys.hasOwnProperty(k)) { keys[e.key] = true; keys[k] = true; }
+      if (k === "f") toggleFullscreen();
+    });
+    window.addEventListener("keyup", (e) => {
+      const k = e.key.toLowerCase();
+      if (keys.hasOwnProperty(e.key) || keys.hasOwnProperty(k)) { keys[e.key] = false; keys[k] = false; }
+    });
+
     function toggleFullscreen() {
       if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch((err) => {
-          console.warn("Fullscreen request denied: ", err);
-        });
+        document.documentElement.requestFullscreen().catch(() => {});
       } else {
         document.exitFullscreen();
       }
@@ -211,7 +205,6 @@
     }
 
     function update() {
-      // 1. Keyboard movement application
       let moveX = 0;
       let moveY = 0;
       if (keys.ArrowUp || keys.w) moveY -= keyboardSpeed;
@@ -223,11 +216,10 @@
         clampAndSetPlayerPosition(playerX + moveX, playerY + moveY);
       }
 
-      // 2. Move puck
       puckX += puckSpeedX;
       puckY += puckSpeedY;
 
-      // 3. Arena Top & Bottom Bounce
+      // Arena Top & Bottom Bounce
       if (puckY - puckRadius <= 0) {
         puckY = puckRadius;
         puckSpeedY = Math.abs(puckSpeedY);
@@ -236,12 +228,12 @@
         puckSpeedY = -Math.abs(puckSpeedY);
       }
 
-      // 4. Left Wall Bounce & Goal
+      // Left Wall Bounce & Goal
       if (puckX - puckRadius <= goalBoxWidth) {
         const insideGoal = puckY > goalTop && puckY < goalBottom;
         if (!insideGoal) {
           puckX = goalBoxWidth + puckRadius;
-          puckSpeedX = Math.abs(puckSpeedX); // Bounce off wall
+          puckSpeedX = Math.abs(puckSpeedX);
         } else if (puckX < 0) {
           aiScore++;
           resetPuck("ai");
@@ -249,12 +241,12 @@
         }
       }
 
-      // 5. Right Wall Bounce & Goal
+      // Right Wall Bounce & Goal
       if (puckX + puckRadius >= canvas.width - goalBoxWidth) {
         const insideGoal = puckY > goalTop && puckY < goalBottom;
         if (!insideGoal) {
           puckX = canvas.width - goalBoxWidth - puckRadius;
-          puckSpeedX = -Math.abs(puckSpeedX); // Bounce off wall
+          puckSpeedX = -Math.abs(puckSpeedX);
         } else if (puckX > canvas.width) {
           playerScore++;
           resetPuck("player");
@@ -262,7 +254,7 @@
         }
       }
 
-      // 6. AI Movement (Confined to Right Half)
+      // AI Logic
       let targetAiX = canvas.width - 130;
       let targetAiY = canvas.height / 2;
 
@@ -282,7 +274,6 @@
       aiX = Math.max(aiMinX, Math.min(aiMaxX, aiX));
       aiY = Math.max(strikerRadius, Math.min(canvas.height - strikerRadius, aiY));
 
-      // 7. Striker Collisions
       handleCollision(playerX, playerY);
       handleCollision(aiX, aiY);
     }
@@ -290,14 +281,12 @@
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Center court markings
       ctx.strokeStyle = "rgba(255, 255, 255, 0.12)";
       ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.arc(canvas.width / 2, canvas.height / 2, 75, 0, Math.PI * 2);
       ctx.stroke();
 
-      // Center division line
       ctx.strokeStyle = "#38bdf8";
       ctx.lineWidth = 2;
       ctx.beginPath();
@@ -311,14 +300,14 @@
       ctx.fillStyle = "rgba(239, 68, 68, 0.15)";
       ctx.fillRect(canvas.width - goalBoxWidth, goalTop, goalBoxWidth, goalHeight);
 
-      // Solid Side Bumpers
+      // Solid Bumpers
       ctx.fillStyle = "#334155";
       ctx.fillRect(0, 0, goalBoxWidth, goalTop);
       ctx.fillRect(0, goalBottom, goalBoxWidth, canvas.height - goalBottom);
       ctx.fillRect(canvas.width - goalBoxWidth, 0, goalBoxWidth, goalTop);
       ctx.fillRect(canvas.width - goalBoxWidth, goalBottom, goalBoxWidth, canvas.height - goalBottom);
 
-      // Goal Posts
+      // Posts
       ctx.fillStyle = "#10b981";
       ctx.fillRect(goalBoxWidth - 3, goalTop - 3, 6, 6);
       ctx.fillRect(goalBoxWidth - 3, goalBottom - 3, 6, 6);
